@@ -1,0 +1,6 @@
+services:
+  - type: web
+    runtime: static
+    name: jiuwo-ai-receptionist
+    buildCommand: echo "static"
+    staticPublishPath: .

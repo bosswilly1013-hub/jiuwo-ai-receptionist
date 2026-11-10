@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#16110d" />
+  <title>久沃 AI 接線生（測試版）</title>
+  <style>
+    :root {
+      --bg: #16110d;
+      --bg-elev: #211a14;
+      --bg-soft: #2a221b;
+      --line: rgba(232, 213, 176, .16);
+      --gold: #d4b06a;
+      --gold-soft: #e8d5b0;
+      --ink: #f6f0e6;
+      --muted: #b3a794;
+      --user: #7c2f2a;
+      --user-ink: #fff7f0;
+      --ai: #2f2720;
+      --ok: #7dba7a;
+      --warn: #e0b15a;
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+      --radius: 18px;
+      --font: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Source Han Sans TC", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font); }
+    body {
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(212,176,106,.16), transparent 50%),
+        radial-gradient(900px 500px at 100% 0%, rgba(124,47,42,.18), transparent 45%),
+        var(--bg);
+    }
+    .app {
+      max-width: 1080px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+      gap: 12px;
+    }
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+    .logo {
+      width: 46px; height: 46px; flex: none;
+      border-radius: 14px;
+      background: linear-gradient(160deg, #ead7a8, #b8893d);
+      color: #2a1d10;
+      font-weight: 700;
+      display: grid; place-items: center;
+      letter-spacing: .04em;
+      box-shadow: 0 8px 20px rgba(184,137,61,.28);
+    }
+    h1 { font-size: 1.15rem; margin: 0 0 4px; letter-spacing: .04em; }
+    .hint { margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+    .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .ghost, .mic, .send {
+      border: 1px solid var(--line);
+      background: var(--bg-elev);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .ghost:hover, .send:hover { border-color: var(--gold); color: var(--gold-soft); }
+    .ghost[aria-pressed="true"] { background: #3a2a1d; color: var(--gold); border-color: var(--gold); }
+    .banner {
+      border: 1px solid var(--line);
+      background: #3a2d1c;
+      color: var(--gold-soft);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: .8rem;
+    }
+    .banner.error { background: #3a1d1b; color: #f3c2bc; }
+    .hidden { display: none !important; }
+    .layout {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 12px;
+    }
+    .chat-panel, .booking-panel {
+      background: rgba(33,26,20,.86);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .chat-panel { display: flex; flex-direction: column; min-height: 360px; }
+    .transcript {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 16px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bubble {
+      max-width: 86%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      line-height: 1.65;
+      font-size: .95rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.ai { align-self: flex-start; background: var(--ai); border: 1px solid var(--line); }
+    .bubble.user { align-self: flex-end; background: var(--user); color: var(--user-ink); }
+    .bubble.interim { opacity: .65; font-style: italic; }
+    .who { display: block; font-size: .72rem; letter-spacing: .08em; color: var(--gold); margin-bottom: 4px; }
+    .bubble.user .who { color: #f6d2c6; }
+    .booking-panel { padding: 16px; }
+    .booking-panel h2 { margin: 0 0 6px; font-size: .95rem; letter-spacing: .12em; color: var(--gold-soft); }
+    .demo-tag {
+      display: inline-block;
+      margin: 0 0 14px;
+      font-size: .7rem;
+      color: #2a1d10;
+      background: var(--gold);
+      border-radius: 999px;
+      padding: 2px 8px;
+      letter-spacing: .06em;
+    }
+    .slot { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+    .slot span:first-child { color: var(--muted); }
+    .empty { color: #7d7366; }
+    .status-pill {
+      margin-top: 14px;
+      text-align: center;
+      border-radius: 999px;
+      padding: 8px;
+      font-size: .8rem;
+      background: var(--bg-soft);
+      color: var(--gold-soft);
+    }
+    .status-pill.done { background: rgba(125,186,122,.16); color: var(--ok); }
+    .status-pill.confirm { background: rgba(224,177,90,.14); color: var(--warn); }
+    .dock {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0 4px;
+    }
+    #status { color: var(--muted); font-size: .85rem; min-height: 1.3em; }
+    .mic {
+      width: 92px; height: 92px;
+      border-radius: 50%;
+      border: 0;
+      background: radial-gradient(circle at 30% 25%, #f0deB0, #c49a4a 42%, #8a5a22);
+      color: #2a1d10;
+      font-weight: 700;
+      font-size: .82rem;
+      line-height: 1.25;
+      box-shadow: 0 12px 28px rgba(196,154,74,.35);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    .mic:hover { filter: brightness(1.06); }
+    .mic.listening {
+      animation: pulse 1.2s ease-in-out infinite;
+      box-shadow: 0 0 0 8px rgba(212,176,106,.18), 0 12px 28px rgba(196,154,74,.4);
+    }
+    .mic.disabled { filter: grayscale(.4); opacity: .7; cursor: not-allowed; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .text-row { display: flex; width: min(560px, 100%); gap: 8px; }
+    .text-row input {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--bg-elev);
+      color: var(--ink);
+      font: inherit;
+      padding: 10px 14px;
+      outline: none;
+    }
+    .text-row input:focus { border-color: var(--gold); }
+    @media (max-width: 800px) {
+      .layout { grid-template-columns: 1fr; }
+      .booking-panel { order: -1; padding: 12px 14px; }
+      .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+      .status-pill { grid-column: 1 / -1; }
+      .chat-panel { min-height: 42dvh; }
+      h1 { font-size: 1.02rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">久</div>
+        <div>
+          <h1>久沃 AI 接線生（測試版）</h1>
+          <p class="hint">建議用電腦版 Chrome 或 Android Chrome 測試效果最佳。語音辨識與回覆都在瀏覽器端完成，不必登入。</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="ghost" id="muteBtn" aria-pressed="false">取消語音</button>
+        <button type="button" class="ghost" id="resetBtn">重新開始</button>
+      </div>
+    </header>
+
+    <div id="compat" class="banner error hidden" role="status"></div>
+    <div id="voiceNote" class="banner hidden" role="status"></div>
+
+    <div class="layout">
+      <section class="chat-panel">
+        <div id="transcript" class="transcript" aria-live="polite"></div>
+      </section>
+      <aside class="booking-panel">
+        <h2>本次訂位資訊</h2>
+        <span class="demo-tag">示範資料</span>
+        <div class="slots">
+          <div class="slot"><span>日期</span><span id="slotDate" class="empty">尚未提供</span></div>
+          <div class="slot"><span>時間</span><span id="slotTime" class="empty">尚未提供</span></div>
+          <div class="slot"><span>人數</span><span id="slotParty" class="empty">尚未提供</span></div>
+          <div class="slot"><span>訂位大名</span><span id="slotName" class="empty">尚未提供</span></div>
+          <div class="slot"><span>聯絡電話</span><span id="slotPhone" class="empty">尚未提供</span></div>
+        </div>
+        <div id="bookStatus" class="status-pill">等待開始訂位</div>
+      </aside>
+    </div>
+
+    <footer class="dock">
+      <div id="status">請按住說話，或點一下開始</div>
+      <button type="button" class="mic" id="micBtn" aria-label="按住說話，或點一下開始與停止">按住<br>說話</button>
+      <form id="textForm" class="text-row" autocomplete="off">
+        <input id="textInput" maxlength="200" placeholder="語音不方便時，也可在這裡打字測試" aria-label="打字測試" />
+        <button type="submit" class="send">送出</button>
+      </form>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const OPENING = "您好，這裡是久沃餐飲，我是 AI 訂位助理，請問需要為您訂位嗎？";
+      const STORE = {
+        hours: "我們的營業時間是週一到週日，中午 11 點 30 分到下午 2 點 30 分，晚上 5 點 30 分到 9 點 30 分。這是示範資料。",
+        address: "我們在高雄市，各門市地址請以官方資訊為準。這是示範資料。",
+        room: "有包廂，大約 4 到 12 人的包廂都可安排，訂位時跟我說一聲即可。這是示範資料。",
+        parking: "店家附近有收費停車場，部分門市附近也有路邊停車格。這是示範資料。",
+        veg: "有提供素食和蛋奶素的選項，到店再跟服務人員說一聲就可以。這是示範資料。"
+      };
+      const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+      const CN = {'零':0,'〇':0,'○':0,'一':1,'二':2,'兩':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+      const SLOT_ORDER = ["date", "time", "party", "name", "phone"];
+      const QUESTIONS = {
+        date: "請問要訂哪一天呢？",
+        time: "請問幾點到呢？",
+        party: "請問幾位用餐呢？",
+        name: "請問訂位的大名是？",
+        phone: "請問聯絡電話呢？方便我們為您保留位子。"
+      };
+
+      const el = {
+        transcript: document.getElementById("transcript"),
+        compat: document.getElementById("compat"),
+        voiceNote: document.getElementById("voiceNote"),
+        muteBtn: document.getElementById("muteBtn"),
+        resetBtn: document.getElementById("resetBtn"),
+        micBtn: document.getElementById("micBtn"),
+        status: document.getElementById("status"),
+        textForm: document.getElementById("textForm"),
+        textInput: document.getElementById("textInput"),
+        slotDate: document.getElementById("slotDate"),
+        slotTime: document.getElementById("slotTime"),
+        slotParty: document.getElementById("slotParty"),
+        slotName: document.getElementById("slotName"),
+        slotPhone: document.getElementById("slotPhone"),
+        bookStatus: document.getElementById("bookStatus")
+      };
+
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition = null;
+      let listening = false;
+      let holdMode = false;
+      let pressStarted = 0;
+      let holdTimer = null;
+      let muted = false;
+      let speaking = false;
+      let voicesReady = false;
+      let chosenVoice = null;
+      let voiceWarned = false;
+      let greeted = false;
+      let interimBubble = null;
+      let supported = !!SpeechRec;
+
+      const state = createState();
+
+      function createState() {
+        return {
+          phase: "greeting",
+          slots: { date: null, time: null, party: null, name: null, phone: null },
+          lastAsked: null,
+          unknownStreak: 0
+        };
+      }
+
+      function nowTaipei() {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Taipei",
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+        }).formatToParts(new Date());
+        const get = (t) => +parts.find((p) => p.type === t).value;
+        return new Date(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+      }
+
+      function addDays(base, n) {
+        const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
+        return d;
+      }
+
+      function formatDate(d) {
+        return d.getFullYear() + " 年 " + (d.getMonth() + 1) + " 月 " + d.getDate() + " 日（週" + WEEKDAYS[d.getDay()] + "）";
+      }
+
+      function formatTime(t) {
+        const h = t.hour;
+        const period = h < 12 ? "早上" : h < 17 ? (h === 12 ? "中午" : "下午") : "晚上";
+        const h12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+        return t.minute ? period + " " + h12 + " 點 " + t.minute + " 分" : period + " " + h12 + " 點";
+      }
+
+      function formatPhone(p) {
+        if (/^09\d{8}$/.test(p)) return p.slice(0, 4) + "-" + p.slice(4, 7) + "-" + p.slice(7);
+        return p;
+      }
+
+      function normalize(text) {
+        return String(text || "")
+          .replace(/[，。！？、,.!?]/g, " ")
+          .replace(/点/g, "點")
+          .replace(/号/g, "號")
+          .replace(/礼拜|禮拜|星期/g, "週")
+          .replace(/周/g, "週")
+          .replace(/两/g, "兩")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function compact(text) {
+        return normalize(text).replace(/\s+/g, "");
+      }
+
+      function parseCnInt(raw) {
+        if (raw == null) return null;
+        const s = String(raw).replace(/\s+/g, "");
+        if (/^\d+$/.test(s)) return parseInt(s, 10);
+        if (s === "十") return 10;
+        if (CN[s] != null && s !== "十") return CN[s];
+        const m = s.match(/^([一二兩三四五六七八九])?十([一二三四五六七八九])?$/);
+        if (m) return (m[1] ? CN[m[1]] : 1) * 10 + (m[2] ? CN[m[2]] : 0);
+        return null;
+      }
+
+      function toDigits(s) {
+        return String(s).replace(/[零〇○一壹二兩两三參四肆五伍六陸七柒八捌九玖十拾]/g, (ch) => {
+          if (ch === "十" || ch === "拾") return "10";
+          return String(CN[ch] != null ? CN[ch] : ch);
+        }).replace(/\D/g, "");
+      }
+
+      function extractDate(text) {
+        const t = compact(text);
+        const today = nowTaipei();
+        if (/今天|今日/.test(t)) return addDays(today, 0);
+        if (/明天|明日|明晚/.test(t)) return addDays(today, 1);
+        if (/大後天/.test(t)) return addDays(today, 3);
+        if (/後天|後晚/.test(t)) return addDays(today, 2);
+        const md = t.match(/(\d{1,2}|[一二三四五六七八九十]+)月(\d{1,2}|[一二三四五六七八九十]+)[日號]?/);
+        if (md) {
+          const month = parseCnInt(md[1]);
+          const day = parseCnInt(md[2]);
+          if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            let year = today.getFullYear();
+            let d = new Date(year, month - 1, day);
+            if (d < addDays(today, 0)) d = new Date(year + 1, month - 1, day);
+            return d;
+          }
+        }
+        const slash = t.match(/(\d{1,2})[\/\-](\d{1,2})/);
+        if (slash) {
+          const month = +slash[1], day = +slash[2];
+          if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            let year = today.getFullYear();
+            let d = new Date(year, month - 1, day);
+            if (d < addDays(today, 0)) d = new Date(year + 1, month - 1, day);
+            return d;
+          }
+        }
+        const weekend = t.match(/(這|本|下)?(?:週)?(?:末|週末)/);
+        if (weekend) {
+          const next = weekend[1] === "下";
+          const dow = today.getDay();
+          let add = (6 - dow + 7) % 7;
+          if (add === 0 && next) add = 7;
+          if (next && add < 7) add += 7;
+          return addDays(today, add || (next ? 7 : 0));
+        }
+        const wk = t.match(/(這|本|下)?週([日天一二三四五六])/);
+        if (wk) {
+          const map = { 日:0, 天:0, 一:1, 二:2, 三:3, 四:4, 五:5, 六:6 };
+          const target = map[wk[2]];
+          const dow = today.getDay();
+          let add = (target - dow + 7) % 7;
+          if (wk[1] === "下") add = add === 0 ? 7 : add + 7;
+          return addDays(today, add);
+        }
+        const onlyDay = t.match(/(?:^|[^月])(\d{1,2}|[一二三四五六七八九十]+)[日號]/);
+        if (onlyDay) {
+          const day = parseCnInt(onlyDay[1]);
+          if (day >= 1 && day <= 31) {
+            let month = today.getMonth();
+            let year = today.getFullYear();
+            if (day < today.getDate()) { month += 1; if (month > 11) { month = 0; year += 1; } }
+            return new Date(year, month, day);
+          }
+        }
+        return null;
+      }
+
+      function extractTime(text) {
+        const t = compact(text);
+        const colon = t.match(/(早上|上午|中午|下午|傍晚|晚上|晚間|今晚)?(\d{1,2})[:：](\d{2})/);
+        const spoken = t.match(/(早上|上午|中午|下午|傍晚|晚上|晚間|今晚)?(\d{1,2}|[一二三四五六七八九十兩]+)點(?!擊)(半|(\d{1,2}|[一二三四五六七八九十]+)分)?/);
+        let hour = null, minute = 0, period = null;
+        if (colon) {
+          period = colon[1] || (t.match(/早上|上午|中午|下午|傍晚|晚上|晚間|今晚/) || [null])[0];
+          hour = +colon[2];
+          minute = +colon[3];
+        } else if (spoken) {
+          period = spoken[1] || (t.match(/早上|上午|中午|下午|傍晚|晚上|晚間|今晚/) || [null])[0];
+          hour = parseCnInt(spoken[2]);
+          if (spoken[3] === "半") minute = 30;
+          else if (spoken[4]) minute = parseCnInt(spoken[4]);
+        } else {
+          return null;
+        }
+        if (hour == null || hour > 24) return null;
+        if (minute == null || minute > 59) return null;
+        if (period === "下午" || period === "傍晚" || period === "晚上" || period === "晚間" || period === "今晚") {
+          if (hour < 12) hour += 12;
+        } else if (period === "中午") {
+          if (hour < 11) hour += 12;
+        } else if (period === "早上" || period === "上午") {
+          if (hour === 12) hour = 0;
+        } else {
+          if (hour >= 1 && hour <= 4) hour += 12;
+          else if (hour >= 5 && hour <= 11) hour += 12;
+        }
+        if (hour === 24) hour = 0;
+        return { hour, minute };
+      }
+
+      function extractParty(text) {
+        const t = compact(text);
+        const m = t.match(/(\d{1,2}|[一二兩三四五六七八九十]+)(?:個|位|人)/);
+        if (!m) return null;
+        const n = parseCnInt(m[1]);
+        if (n && n >= 1 && n <= 40) return n;
+        return null;
+      }
+
+      function extractPhone(text) {
+        const raw = compact(text);
+        const mixed = raw.replace(/[零〇○一壹二兩两三四五六七八九]/g, (ch) => String(CN[ch]));
+        const digits = mixed.replace(/\D/g, "");
+        const m09 = digits.match(/09\d{8}/);
+        if (m09) return m09[0];
+        const land = digits.match(/0[2-8]\d{7,8}/);
+        if (land) return land[0];
+        return null;
+      }
+
+      function extractName(text, expectingName) {
+        const raw = normalize(text);
+        const compactText = compact(text);
+        const patterns = [
+          /(?:訂位)?(?:的)?(?:大名|姓名|名字)(?:是|叫)?\s*([\u4e00-\u9fffA-Za-z]{1,6})/,
+          /我叫\s*([\u4e00-\u9fffA-Za-z]{1,6})/,
+          /名叫\s*([\u4e00-\u9fffA-Za-z]{1,6})/,
+          /我姓\s*([\u4e00-\u9fff]{1,2})/,
+          /姓\s*([\u4e00-\u9fff]{1,2})/
+        ];
+        for (const re of patterns) {
+          const m = raw.match(re);
+          if (m && m[1] && !isJunkName(m[1])) {
+            if (/我姓|姓/.test(re.source) && m[1].length <= 2) return m[1] + "先生或小姐";
+            return m[1].replace(/[的了啊呀喔哦呢]$/, "");
+          }
+        }
+        const honor = compactText.match(/([\u4e00-\u9fff]{1,3})(先生|小姐|太太|大哥|老闆)/);
+        if (honor && !isJunkName(honor[1])) return honor[1] + honor[2];
+        if (expectingName) {
+          const cleaned = compactText.replace(/我是|大名|姓名|名字|訂位|叫做?/g, "");
+          if (cleaned && cleaned.length <= 6 && /^[\u4e00-\u9fffA-Za-z]+$/.test(cleaned) && !isJunkName(cleaned)) {
+            return cleaned;
+          }
+        }
+        return null;
+      }
+
+      function isJunkName(s) {
+        return /今天|明天|後天|訂位|預約|謝謝|不用|取消|確認|好的|可以|時間|電話|幾位|幾個|包廂|停車|素食|營業|地址/.test(s);
+      }
+
+      function isYes(text) {
+        const t = compact(text);
+        return /^(好|好的|可以|行|對|對的|沒錯|是|是的|確定|確認|沒問題|嗯|哦|喔|ok|OK|Okay|就這樣|正確)(的|了|啊|呀|喔|哦|呢)*$/.test(t) || /確認|沒錯|沒問題|可以啊|好啊/.test(t);
+      }
+
+      function isNo(text) {
+        const t = compact(text);
+        return /不對|不是|錯了|有誤|不正確|再改|改一下|不對喔|不對啊/.test(t);
+      }
+
+      function isCancel(text) {
+        return /取消|不用了|算了|不要了|先不要|不用訂/.test(compact(text));
+      }
+
+      function bookingIntent(text) {
+        const t = compact(text);
+        return /訂位|預約|訂桌|訂位子|要訂|想訂|幫我訂|我要訂|訂明天|訂今天|訂後天|訂一桌/.test(t) || isYes(text);
+      }
+
+      function faqAnswer(text) {
+        const t = compact(text);
+        if (/營業|幾點開|開到幾點|休息|時間表/.test(t) && !/訂/.test(t) && !extractTime(text)) return STORE.hours;
+        if (/營業|幾點開|開到幾點|幾點到幾點/.test(t)) return STORE.hours;
+        if (/地址|在哪|哪裡|位置|怎麼去|在什麼地方/.test(t)) return STORE.address;
+        if (/包廂|包間|獨立空間|VIP/.test(t)) return STORE.room;
+        if (/停車|車位|停車場|好停車嗎/.test(t)) return STORE.parking;
+        if (/素食|吃素|蔬食|蛋奶素|齋/.test(t)) return STORE.veg;
+        return null;
+      }
+
+      function extractAll(text, expectingName) {
+        return {
+          date: extractDate(text),
+          time: extractTime(text),
+          party: extractParty(text),
+          name: extractName(text, expectingName),
+          phone: extractPhone(text)
+        };
+      }
+
+      function applyExtracted(got) {
+        let filled = false;
+        for (const key of SLOT_ORDER) {
+          if (got[key] != null) {
+            state.slots[key] = got[key];
+            filled = true;
+          }
+        }
+        if (filled) renderSlots();
+        return filled;
+      }
+
+      function missingSlots() {
+        return SLOT_ORDER.filter((k) => !state.slots[k]);
+      }
+
+      function allFilled() {
+        return missingSlots().length === 0;
+      }
+
+      function recapText() {
+        const s = state.slots;
+        return "好的，幫您確認一次：日期是" + formatDate(s.date) + "，時間" + formatTime(s.time) + "，" + s.party + " 位，訂位大名" + s.name + "，電話 " + formatPhone(s.phone) + "，這樣對嗎？";
+      }
+
+      function timeWarning() {
+        const t = state.slots.time;
+        if (!t) return "";
+        const minutes = t.hour * 60 + t.minute;
+        const lunch = minutes >= 11 * 60 + 30 && minutes <= 14 * 60 + 30;
+        const dinner = minutes >= 17 * 60 + 30 && minutes <= 21 * 60 + 30;
+        if (lunch || dinner) return "";
+        return "提醒您，我們示範的營業時間是中午 11 點 30 分到下午 2 點 30 分，以及晚上 5 點 30 分到 9 點 30 分。這個時間先幫您記下來。";
+      }
+
+      function nextQuestion() {
+        const miss = missingSlots();
+        if (!miss.length) {
+          state.phase = "confirming";
+          state.lastAsked = null;
+          const warn = timeWarning();
+          return (warn ? warn + " " : "") + recapText();
+        }
+        state.phase = "collecting";
+        state.lastAsked = miss[0];
+        return QUESTIONS[miss[0]];
+      }
+
+      function replyFor(text) {
+        const raw = normalize(text);
+        if (!raw) {
+          state.unknownStreak += 1;
+          return "不好意思，我沒聽清楚，請您再說一次。";
+        }
+
+        if (isCancel(raw) && state.phase !== "done") {
+          resetSlotsOnly();
+          state.phase = "greeting";
+          return "好的，已經幫您取消這筆訂位。如果之後還要訂位，再跟我說一聲就好。";
+        }
+
+        const faq = faqAnswer(raw);
+        if (state.phase === "done") {
+          if (faq) return faq + " 如果還要再訂一位，跟我說一聲即可。";
+          if (bookingIntent(raw) && !isYes(raw)) {
+            Object.assign(state, createState());
+            state.phase = "collecting";
+            applyExtracted(extractAll(raw, false));
+            renderSlots();
+            return "好的，再幫您訂一位。" + nextQuestion();
+          }
+          if (bookingIntent(raw) || /再訂|另外|新的/.test(compact(raw))) {
+            Object.assign(state, createState());
+            state.phase = "collecting";
+            renderSlots();
+            return "好的，再幫您訂一位。" + nextQuestion();
+          }
+          return "這筆訂位已經完成了。如果還要再訂、或想問營業時間、地址、包廂、停車或素食，都可以再跟我說。";
+        }
+
+        if (faq && (state.phase === "greeting" || !hasAnySlot())) {
+          return faq + " 請問需要為您訂位嗎？";
+        }
+        if (faq && state.phase !== "confirming") {
+          return faq + " " + (state.lastAsked ? QUESTIONS[state.lastAsked] : nextQuestion());
+        }
+
+        if (state.phase === "confirming") {
+          if (isYes(raw)) {
+            state.phase = "done";
+            renderSlots();
+            return "訂位完成。我們已經為您保留位子，到店時請告知訂位大名。這是測試版，資料只留在您的瀏覽器，不會真的寫進訂位系統。如果還需要其他協助，再跟我說一聲。";
+          }
+          const got = extractAll(raw, false);
+          const change = detectChange(raw);
+          const hasNew = SLOT_ORDER.some((k) => got[k] != null);
+          if (change || isNo(raw) || hasNew) {
+            if (change) state.slots[change] = null;
+            applyExtracted(got);
+            renderSlots();
+            if (allFilled() && (hasNew || change)) return recapTextPrep();
+            if (!change && !hasNew && isNo(raw)) {
+              return "好的，請問要改日期、時間、人數、大名還是電話呢？";
+            }
+            state.phase = "collecting";
+            return "好的，那這邊再跟您確認一下。" + nextQuestion();
+          }
+          state.unknownStreak += 1;
+          return "不好意思，請跟我說「確認」或告訴我要改哪一項，例如改時間或改人數。";
+        }
+
+        const expectingName = state.phase === "collecting" && state.lastAsked === "name";
+        const got = extractAll(raw, expectingName);
+        const filled = applyExtracted(got);
+
+        if (state.phase === "greeting") {
+          if (bookingIntent(raw) || filled) {
+            if (allFilled()) return nextQuestion();
+            const prefix = filled ? "好的，已經先幫您記下了。" : "好的。";
+            return prefix + nextQuestion();
+          }
+          if (isNo(raw)) {
+            return "好的，沒問題。如果想問營業時間、地址、包廂、停車或素食，都可以再問我。";
+          }
+          state.unknownStreak += 1;
+          return "不好意思，我沒有完全聽懂。您可以直接說「我要訂明天晚上七點四個人」，或問我營業時間。";
+        }
+
+        if (filled) {
+          state.unknownStreak = 0;
+          if (allFilled()) return nextQuestion();
+          return nextQuestion();
+        }
+
+        if (state.lastAsked === "name") {
+          const name = extractName(raw, true);
+          if (name) {
+            state.slots.name = name;
+            renderSlots();
+            return nextQuestion();
+          }
+        }
+        if (state.lastAsked === "phone" && !got.phone) {
+          return "電話我這邊沒有聽完整，麻煩您再說一次，例如 0912-345-678。";
+        }
+
+        state.unknownStreak += 1;
+        const hint = state.lastAsked ? QUESTIONS[state.lastAsked] : "請問需要為您訂位嗎？";
+        return "不好意思，我沒聽清楚，請您再說一次。" + hint;
+      }
+
+      function recapTextPrep() {
+        state.phase = "confirming";
+        return recapText();
+      }
+
+      function hasAnySlot() {
+        return SLOT_ORDER.some((k) => state.slots[k]);
+      }
+
+      function detectChange(text) {
+        const t = compact(text);
+        if (/改日期|改天|不是這天|換一天|日期/.test(t) && !/時間/.test(t)) return "date";
+        if (/改時間|改幾點|換個時間|時間/.test(t)) return "time";
+        if (/改人數|人數|幾位/.test(t)) return "party";
+        if (/改名|大名|姓名/.test(t)) return "name";
+        if (/改電話|電話/.test(t)) return "phone";
+        return null;
+      }
+
+      function hasCorrection(text) {
+        return !!(extractDate(text) || extractTime(text) || extractParty(text) || extractPhone(text) || extractName(text, false));
+      }
+
+      function resetSlotsOnly() {
+        state.slots = { date: null, time: null, party: null, name: null, phone: null };
+        state.lastAsked = null;
+        renderSlots();
+      }
+
+      function renderSlots() {
+        setSlot(el.slotDate, state.slots.date && formatDate(state.slots.date));
+        setSlot(el.slotTime, state.slots.time && formatTime(state.slots.time));
+        setSlot(el.slotParty, state.slots.party != null ? state.slots.party + " 位" : "");
+        setSlot(el.slotName, state.slots.name);
+        setSlot(el.slotPhone, state.slots.phone && formatPhone(state.slots.phone));
+        const pill = el.bookStatus;
+        pill.classList.remove("done", "confirm");
+        if (state.phase === "done") {
+          pill.textContent = "訂位完成（測試，未寫入系統）";
+          pill.classList.add("done");
+        } else if (state.phase === "confirming") {
+          pill.textContent = "待您確認";
+          pill.classList.add("confirm");
+        } else if (hasAnySlot()) {
+          pill.textContent = "收集中（" + (5 - missingSlots().length) + "／5）";
+        } else {
+          pill.textContent = "等待開始訂位";
+        }
+      }
+
+      function setSlot(node, value) {
+        if (value) {
+          node.textContent = value;
+          node.classList.remove("empty");
+        } else {
+          node.textContent = "尚未提供";
+          node.classList.add("empty");
+        }
+      }
+
+      function addBubble(role, text, interim) {
+        if (interim) {
+          if (!interimBubble) {
+            interimBubble = document.createElement("div");
+            interimBubble.className = "bubble user interim";
+            interimBubble.innerHTML = '<span class="who">您</span><span class="msg"></span>';
+            el.transcript.appendChild(interimBubble);
+          }
+          interimBubble.querySelector(".msg").textContent = text;
+          el.transcript.scrollTop = el.transcript.scrollHeight;
+          return;
+        }
+        if (interimBubble) { interimBubble.remove(); interimBubble = null; }
+        const div = document.createElement("div");
+        div.className = "bubble " + role;
+        div.innerHTML = '<span class="who"></span><span class="msg"></span>';
+        div.querySelector(".who").textContent = role === "user" ? "您" : "AI 接線生";
+        div.querySelector(".msg").textContent = text;
+        el.transcript.appendChild(div);
+        el.transcript.scrollTop = el.transcript.scrollHeight;
+      }
+
+      function setStatus(text) {
+        el.status.textContent = text;
+      }
+
+      function pickVoice() {
+        const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+        if (!voices.length) return null;
+        const tw = voices.find((v) => /zh-TW|zh_TW|Taiwan/i.test(v.lang)) ||
+          voices.find((v) => /Mei-Jia|Meijia|Hsiao|Han.?T|Tingting|Taiwan/i.test(v.name));
+        const zh = voices.find((v) => /^zh/i.test(v.lang));
+        if (!tw && !voiceWarned) {
+          voiceWarned = true;
+          el.voiceNote.textContent = "目前裝置沒有找到 zh-TW 台灣腔語音，已改用系統預設語音。";
+          el.voiceNote.classList.remove("hidden");
+        }
+        return tw || zh || voices[0];
+      }
+
+      function refreshVoice() {
+        chosenVoice = pickVoice();
+        voicesReady = true;
+      }
+
+      function speak(text) {
+        if (!window.speechSynthesis) return;
+        speechSynthesis.cancel();
+        if (muted) { speaking = false; return; }
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "zh-TW";
+        u.rate = 1.05;
+        u.pitch = 1;
+        if (chosenVoice) u.voice = chosenVoice;
+        speaking = true;
+        setStatus("AI 說話中…可按「取消語音」中止");
+        u.onend = function () {
+          speaking = false;
+          if (!listening) setStatus("請按住說話，或點一下開始");
+        };
+        u.onerror = function () { speaking = false; };
+        speechSynthesis.speak(u);
+      }
+
+      function stopSpeech() {
+        if (window.speechSynthesis) speechSynthesis.cancel();
+        speaking = false;
+      }
+
+      function handleUserText(text) {
+        addBubble("user", text);
+        const reply = replyFor(text);
+        addBubble("ai", reply);
+        speak(reply);
+        renderSlots();
+      }
+
+      function startListening() {
+        if (!supported || listening) return;
+        stopSpeech();
+        try {
+          recognition.start();
+        } catch (err) {
+          /* already started */
+        }
+      }
+
+      function stopListening() {
+        if (!recognition || !listening) return;
+        try { recognition.stop(); } catch (e) {}
+      }
+
+      function setupRecognition() {
+        if (!SpeechRec) return;
+        recognition = new SpeechRec();
+        recognition.lang = "zh-TW";
+        recognition.interimResults = true;
+        recognition.continuous = false;
+        recognition.maxAlternatives = 1;
+        recognition.onstart = function () {
+          listening = true;
+          el.micBtn.classList.add("listening");
+          setStatus("正在聽您說…鬆開即可結束，或再點一下停止");
+        };
+        recognition.onend = function () {
+          listening = false;
+          el.micBtn.classList.remove("listening");
+          if (interimBubble) { interimBubble.remove(); interimBubble = null; }
+          if (!speaking) setStatus("請按住說話，或點一下開始");
+        };
+        recognition.onerror = function (ev) {
+          listening = false;
+          el.micBtn.classList.remove("listening");
+          if (ev.error === "not-allowed") {
+            el.compat.textContent = "瀏覽器沒有麥克風權限。請在網址列允許使用麥克風後再試一次。";
+            el.compat.classList.remove("hidden");
+            setStatus("需要麥克風權限才能語音測試");
+          } else if (ev.error === "no-speech") {
+            setStatus("沒有聽到聲音，請再試一次");
+          } else if (ev.error !== "aborted") {
+            setStatus("語音辨識暫時無法使用，也可改用下方打字測試");
+          }
+        };
+        recognition.onresult = function (ev) {
+          let interim = "";
+          let finalText = "";
+          for (let i = ev.resultIndex; i < ev.results.length; i++) {
+            const piece = ev.results[i][0].transcript;
+            if (ev.results[i].isFinal) finalText += piece;
+            else interim += piece;
+          }
+          if (interim) addBubble("user", interim, true);
+          if (finalText) handleUserText(finalText.trim());
+        };
+      }
+
+      function setupMicButton() {
+        const btn = el.micBtn;
+        const HOLD_MS = 280;
+        const onDown = function (e) {
+          if (!supported) return;
+          e.preventDefault();
+          pressStarted = Date.now();
+          holdMode = false;
+          holdTimer = setTimeout(function () {
+            holdMode = true;
+            startListening();
+          }, HOLD_MS);
+          if (btn.setPointerCapture && e.pointerId != null) {
+            try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+          }
+        };
+        const onUp = function (e) {
+          if (!supported) return;
+          e.preventDefault();
+          clearTimeout(holdTimer);
+          const dur = Date.now() - pressStarted;
+          if (holdMode || dur >= HOLD_MS) {
+            stopListening();
+            holdMode = false;
+          } else {
+            if (listening) stopListening();
+            else startListening();
+          }
+        };
+        btn.addEventListener("pointerdown", onDown);
+        btn.addEventListener("pointerup", onUp);
+        btn.addEventListener("pointercancel", onUp);
+        btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      }
+
+      function greet(playVoice) {
+        if (greeted) return;
+        greeted = true;
+        addBubble("ai", OPENING);
+        renderSlots();
+        if (playVoice !== false) speak(OPENING);
+      }
+
+      function fullReset() {
+        stopSpeech();
+        stopListening();
+        Object.assign(state, createState());
+        el.transcript.innerHTML = "";
+        interimBubble = null;
+        greeted = false;
+        renderSlots();
+        greet(true);
+      }
+
+      el.muteBtn.addEventListener("click", function () {
+        muted = !muted;
+        el.muteBtn.setAttribute("aria-pressed", muted ? "true" : "false");
+        el.muteBtn.textContent = muted ? "已靜音" : "取消語音";
+        if (muted) {
+          stopSpeech();
+          setStatus("已靜音，對話會顯示在畫面上");
+        } else {
+          setStatus("已開啟語音回覆");
+        }
+      });
+      el.resetBtn.addEventListener("click", fullReset);
+      el.textForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const text = el.textInput.value.trim();
+        if (!text) return;
+        el.textInput.value = "";
+        greet(false);
+        handleUserText(text);
+      });
+
+      if (window.speechSynthesis) {
+        refreshVoice();
+        speechSynthesis.addEventListener("voiceschanged", refreshVoice);
+      } else {
+        el.voiceNote.textContent = "這個瀏覽器不支援語音播放，仍可用畫面與打字進行測試。";
+        el.voiceNote.classList.remove("hidden");
+      }
+
+      if (!supported) {
+        el.compat.textContent = "這個瀏覽器不支援語音辨識（Web Speech API）。建議改用電腦版 Chrome 或 Android Chrome；您也可以先用下方欄位打字體驗訂位流程。";
+        el.compat.classList.remove("hidden");
+        el.micBtn.classList.add("disabled");
+        el.micBtn.disabled = true;
+        setStatus("目前僅能打字測試");
+      } else {
+        setupRecognition();
+        setupMicButton();
+      }
+
+      greet(true);
+
+      window.__receptionist = {
+        extractDate, extractTime, extractParty, extractPhone, extractName,
+        replyFor, formatDate, formatTime, state, reset: fullReset, compact
+      };
+    })();
+  </script>
+</body>
+</html>
